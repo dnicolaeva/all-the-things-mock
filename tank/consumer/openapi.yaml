@@ -1,0 +1,1175 @@
+openapi: 3.0.0
+info:
+  description: "# Idempotency\n\nAll POST/DELETE operations must be called with an\
+    \ `idempotency_key` body parameter.  The value for the `idempotency_key` is returned\
+    \ from the AccountSummaryResponse. Additionally, the value is returned back as\
+    \ a header in every POST/DELETE operation.\n            \n"
+  title: Deposits POC
+  version: 1.0.4
+servers:
+- description: savings-dev
+  url: https://savings-dev.affirm-odin.com/deposits_poc/v1.0.4
+- description: savings-sandbox
+  url: https://savings-sandbox.affirm-odin.com/deposits_poc/v1.0.4
+- description: odin
+  url: https://i-03c5cef5506b7ad74.affirm-odin.com/deposits_poc/v1.0.4
+- description: SwaggerHub API Auto Mocking
+  url: https://virtserver.swaggerhub.com/deposits_poc/v1.0.4
+- description: stage-sandbox
+  url: https://sandbox.affirm-stage.com/deposits_poc/v1.0.4
+- description: ddshah-wip
+  url: https://ddshah-wip.affirm-odin.com/deposits_poc/v1.0.4
+- description: marco
+  url: https://marcodev.affirm-odin.com/deposits_poc/v1.0.4
+- description: rainier
+  url: https://rg-savings-sandbox-us.affirm-odin.com/deposits_poc/v1.0.4
+- description: skye
+  url: https://skye-tank.affirm-odin.com/deposits_poc/v1.0.4
+- description: stage-live
+  url: https://www.affirm-stage.com/deposits_poc/v1.0.4
+- description: ayo-testing
+  url: https://ayo-odin-dev.affirm-odin.com/deposits_poc/v1.0.4
+- description: emily-wip
+  url: https://emilylo.affirm-odin.com/deposits_poc/v1.0.4
+tags:
+- description: |
+    # Flow
+
+    1. Start onboarding by posting to /onboarding
+    1. Accept disclosures by posting to /onboarding/{onboarding_id}/disclosures.
+       This operation can be called more than once. It returns the ID of the user's savings account.
+  name: Onboarding
+- description: Account Operations
+  name: Account
+- description: Deposit Operations
+  name: Deposits
+- description: Withdrawal Operations
+  name: Withdrawals
+- description: Product Operations
+  name: Product
+- description: User Operations
+  name: User
+paths:
+  /accounts:
+    get:
+      operationId: list_accounts
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+          description: account listing
+      summary: list accounts
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.account_controller
+  /accounts/{account_id}:
+    get:
+      operationId: get_account
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: The number of transactions to hydrate in the summary view (max 50).
+        explode: true
+        in: query
+        name: activity_count
+        required: false
+        schema:
+          default: 50
+          format: int32
+          minimum: 1
+          type: integer
+        style: form
+      - description: Type of transaction to filter by (deposit, withdrawal, interest)
+        in: query
+        name: transaction_type
+        required: false
+        schema:
+          type: string
+          enum: [deposit, withdrawal, interest]
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummaryResponse'
+          description: account summary
+      summary: account summary
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.account_controller
+  /accounts/{account_id}/activity:
+    get:
+      operationId: get_activity
+      parameters:
+      - description: number of days of transactions in each page
+        in: query
+        name: days_limit
+        required: false
+        schema:
+          default: 90
+          type: integer
+      - description: Type of transaction to filter by (deposit, withdrawal, interest)
+        in: query
+        name: transaction_type
+        required: false
+        schema:
+          type: string
+          enum: [deposit, withdrawal, interest]
+      - description: Status of transactions to filter by (completed, pending, returned)
+        in: query
+        name: transaction_status
+        required: false
+        schema:
+          type: string
+          enum: [completed, pending, returned]
+      - description: Dispute state of transactions to filter by (disputed, not disputed)
+        in: query
+        name: transaction_dispute
+        required: false
+        schema:
+          type: string
+          enum: [disputed, not_disputed]
+      - description: |
+          Filter activities starting from this date. Inclusive. Date is ISO date format.
+          If value is omitted, server will default to account opening date.
+        in: query
+        name: start_date
+        required: false
+        schema:
+          type: string
+          format: date
+          example: "2021-01-01"
+      - description: |
+          Filter activities starting up to this date. Inclusive. Date is ISO date format.
+          If omitted, server will default to now + 1 day.
+        in: query
+        name: end_date
+        required: false
+        schema:
+          type: string
+          format: date
+          example: "2021-02-28"
+      - description: Whether to automatically search the next page if the current page has no transactions.
+        in: query
+        name: auto_shift_page
+        required: false
+        schema:
+          type: boolean
+          example: true
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityPage'
+          description: activity list
+      summary: account activity
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.account_controller
+  /accounts/{account_id}/deposits:
+    post:
+      operationId: create_onetime_deposit
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositWithdrawalRequest'
+      responses:
+        201:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResponse'
+          description: a pending transaction
+          headers:
+            X-Affirm-Tank-Idempotency-Key:
+              $ref: '#/components/headers/IdempotencyKeyResponseHeader'
+      summary: create a one time deposit
+      tags:
+      - Deposits
+      x-openapi-router-controller: affirm.tank.rest.controllers.deposits_controller
+  /accounts/{account_id}/disclosures:
+    get:
+      operationId: get_accepted_disclosures
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsResponse'
+          description: accepted disclosures list
+      summary: get all accepted disclosures
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.account_controller
+  /accounts/{account_id}/eligible_instruments:
+    get:
+      operationId: get_eligible_instruments
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibleInstrumentsResponse'
+          description: list of usable instruments
+      summary: get list of usable instruments, with withdrawal limits
+      tags:
+      - Instruments
+      x-openapi-router-controller: affirm.tank.rest.controllers.instruments_controller
+  /accounts/{account_id}/recurring_deposits:
+    post:
+      operationId: create_recurring_deposit
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringDepositRequest'
+      responses:
+        201:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringDepositResponse'
+          description: The newly created recurring deposit object
+          headers:
+            X-Affirm-Tank-Idempotency-Key:
+              $ref: '#/components/headers/IdempotencyKeyResponseHeader'
+      summary: create a recurring deposit
+      tags:
+      - Deposits
+      x-openapi-router-controller: affirm.tank.rest.controllers.deposits_controller
+  /accounts/{account_id}/recurring_deposits/{recurring_deposit_id}:
+    delete:
+      operationId: delete_recurring_deposit
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: recurring_deposit_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        204:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummaryResponse'
+          description: The recurring deposit is cancelled.
+      summary: cancel a recurring deposit by ari
+      tags:
+      - Deposits
+      x-openapi-router-controller: affirm.tank.rest.controllers.deposits_controller
+  /accounts/{account_id}/statements:
+    get:
+      operationId: get_statements
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsResponse'
+          description: statement list
+      summary: get all statements
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.account_statement_controller
+  /accounts/{account_id}/statements/{statement_id}/documents/{document_id}:
+    get:
+      operationId: get_statement_document_pdf
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: The Statement ID being retrieved.
+        explode: false
+        in: path
+        name: statement_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: The Document ID being retrieved.
+        explode: false
+        in: path
+        name: document_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: statement document pdf
+      summary: get statement document pdf
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.account_statement_controller
+  /accounts/{account_id}/tax_documents:
+    get:
+      operationId: get_tax_documents
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsResponse'
+          description: tax document list
+      summary: get all tax documents
+      tags:
+      - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.tax_document_controller
+  /accounts/{account_id}/tax_documents/{tax_document_id}:
+    get:
+      operationId: get_tax_document_pdf
+      parameters:
+        - description: The Account ID of the Savings Account.
+          explode: false
+          in: path
+          name: account_id
+          required: true
+          schema:
+            type: string
+          style: simple
+        - description: The tax document ID being retrieved.
+          explode: false
+          in: path
+          name: tax_document_id
+          required: true
+          schema:
+            type: string
+          style: simple
+      responses:
+        200:
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: tax document pdf
+      summary: get tax document pdf
+      tags:
+        - Account
+      x-openapi-router-controller: affirm.tank.rest.controllers.tax_document_controller
+  /accounts/{account_id}/withdrawals:
+    post:
+      operationId: create_onetime_withdrawal
+      parameters:
+      - description: The Account ID of the Savings Account.
+        explode: false
+        in: path
+        name: account_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositWithdrawalRequest'
+      responses:
+        201:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WithdrawalResponse'
+          description: a pending transaction
+          headers:
+            X-Affirm-Tank-Idempotency-Key:
+              $ref: '#/components/headers/IdempotencyKeyResponseHeader'
+      summary: create a one time withdrawal
+      tags:
+      - Withdrawals
+      x-openapi-router-controller: affirm.tank.rest.controllers.withdrawals_controller
+  /onboard/{onboarding_id}/disclosures:
+    post:
+      operationId: accept_onboarding_disclosures
+      parameters:
+      - explode: false
+        in: path
+        name: onboarding_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisclosureAcceptRequest'
+        description: An object containing the list of disclosure aris to accept
+        required: true
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummaryResponse'
+          description: The disclosures have been marked accepted
+      summary: accept disclosures
+      tags:
+      - Onboarding
+      x-openapi-router-controller: affirm.tank.rest.controllers.onboarding_controller
+  /onboarding:
+    post:
+      description: |
+        Starts the onboarding flow.
+      operationId: create_onboarding
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingResponse'
+          description: |
+            An onboarding object
+      summary: commence onboarding
+      tags:
+      - Onboarding
+      x-openapi-router-controller: affirm.tank.rest.controllers.onboarding_controller
+  /product/apy:
+    get:
+      operationId: get_default_apy
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APYResponse'
+          description: Default APY
+      summary: default apy
+      tags:
+        - Product
+      x-openapi-router-controller: affirm.tank.rest.controllers.product_controller
+  /user/product/apy:
+    get:
+      operationId: get_default_apy_for_user
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APYResponse'
+          description: Default APY for user
+      summary: default apy for user
+      tags:
+        - User
+      x-openapi-router-controller: affirm.tank.rest.controllers.user_controller
+components:
+  headers:
+    IdempotencyKeyResponseHeader:
+      description: The next expected idempotency key.
+      explode: false
+      schema:
+        example: 44a6fd76-9152-45a8-9b4b-9ec974b3cea6
+        format: uuid
+        type: string
+      style: simple
+  parameters:
+    user_ari:
+      description: The User ARI of the User.
+      explode: false
+      in: path
+      name: user_ari
+      required: true
+      schema:
+        example: 7337-0000-LEET
+        format: ARI
+        type: string
+      style: simple
+    account_id:
+      description: The Account ID of the Savings Account.
+      explode: false
+      in: path
+      name: account_id
+      required: true
+      schema:
+        type: string
+      style: simple
+    onboarding_id:
+      explode: false
+      in: path
+      name: onboarding_id
+      required: true
+      schema:
+        type: string
+      style: simple
+    recurring_deposit_id:
+      explode: false
+      in: path
+      name: recurring_deposit_id
+      required: true
+      schema:
+        type: string
+      style: simple
+    idempotency_key:
+      explode: true
+      in: query
+      name: idempotency_key
+      required: true
+      schema:
+        example: 44a6fd76-9152-45a8-9b4b-9ec974b3cea6
+        format: uuid
+        type: string
+      style: form
+  schemas:
+    OnboardingResponse:
+      example:
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        disclosures:
+        - id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          title: title
+          url: http://example.com/aeiou
+        - id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          title: title
+          url: http://example.com/aeiou
+        needs_full_ssn: false
+        apy: 2.00
+        should_verify_email: false
+        multiplier: 2.00
+        context_id: 15
+      properties:
+        id:
+          format: uuid
+          type: string
+        disclosures:
+          items:
+            $ref: '#/components/schemas/Disclosure'
+          type: array
+        needs_full_ssn:
+          type: boolean
+          default: false
+        apy:
+          type: string
+        should_verify_email:
+          type: boolean
+          default: false
+        multiplier:
+          type: string
+        context_id:
+          type: string
+      type: object
+    Disclosure:
+      example:
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        title: title
+        url: http://example.com/aeiou
+      properties:
+        id:
+          format: uuid
+          type: string
+        url:
+          format: url
+          type: string
+        title:
+          type: string
+      required:
+      - id
+      - title
+      - url
+      type: object
+    DisclosureAcceptRequest:
+      example:
+        disclosure_ids:
+        - ""
+        - ""
+      properties:
+        disclosure_ids:
+          items:
+            anyOf:
+            - type: string
+          type: array
+      type: object
+    AccountSummaryResponse:
+      example:
+        recurring_deposits:
+        - null
+        - null
+        account_number: account_number
+        crb_customer_id: crb_customer_id
+        saved_this_month: 6
+        balance: 1
+        created: 2000-01-23T04:56:07.000+00:00
+        apy: apy
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        routing_number: routing_number
+        transactions:
+        - null
+        - null
+        ytd_interest: 0
+        pending_transactions:
+        - null
+        - null
+        status: active
+        updated: 2000-01-24T04:56:07.000+00:00
+        max_deposit_per_transaction: 2500000
+        max_withdrawal_per_transaction: 2500000
+        status_change_reason: Account irregularities
+      properties:
+        created:
+          format: date-time
+          type: string
+        status:
+          enum:
+          - active
+          - frozen
+          type: string
+        account_number:
+          type: string
+        routing_number:
+          type: string
+        crb_customer_id:
+          type: string
+        apy:
+          type: string
+        id:
+          format: uuid
+          type: string
+        ytd_interest:
+          format: int32
+          type: integer
+        saved_this_month:
+          format: int32
+          type: integer
+        balance:
+          format: int32
+          type: integer
+        current_balance:
+          format: int32
+          type: integer
+        available_balance:
+          format: int32
+          type: integer
+        pending_transactions:
+          items:
+            $ref: '#/components/schemas/PendingTransaction'
+          type: array
+        transactions:
+          items:
+            $ref: '#/components/schemas/Transaction'
+          type: array
+        recurring_deposits:
+          items:
+            $ref: '#/components/schemas/RecurringDeposit'
+          type: array
+        withdrawals_remaining_current_month:
+          format: int32
+          type: integer
+        idempotency_key:
+          type: string
+        next_page_path:
+          type: string
+        updated:
+          format: date-time
+          type: string
+        max_deposit_per_transaction:
+          format: int32
+          type: integer
+          description: max amount in cents that a user can deposit per transaction
+        max_withdrawal_per_transaction:
+          format: int32
+          type: integer
+          description: max amount in cents that a user can withdraw per transaction
+        status_change_reason:
+          type: string
+      required:
+      - account_number
+      - apy
+      - balance
+      - current_balance
+      - available_balance
+      - created
+      - id
+      - routing_number
+      - status
+      - transactions
+      - withdrawals_remaining_current_month
+      - idempotency_key
+      - next_page_path
+      - updated
+      - max_deposit_per_transaction
+      - max_withdrawal_per_transaction
+      type: object
+    RecurringDepositResponse:
+      type: object
+      required:
+        - summary
+        - recurring_deposit
+      properties:
+        summary:
+          $ref: '#/components/schemas/AccountSummaryResponse'
+        recurring_deposit:
+          $ref: '#/components/schemas/RecurringDeposit'
+    WithdrawalResponse:
+      type: object
+      required:
+        - summary
+        - withdrawal
+      properties:
+        summary:
+          $ref: '#/components/schemas/AccountSummaryResponse'
+        withdrawal:
+          $ref: '#/components/schemas/PendingTransaction'
+    DepositResponse:
+      type: object
+      required:
+        - summary
+        - deposit
+      properties:
+        summary:
+          $ref: '#/components/schemas/AccountSummaryResponse'
+        deposit:
+          $ref: '#/components/schemas/PendingTransaction'
+    AccountListResponse:
+      example:
+        accounts:
+        - recurring_deposits:
+          - null
+          - null
+          account_number: account_number
+          saved_this_month: 6
+          balance: 1
+          created: 2000-01-23T04:56:07.000+00:00
+          apy: apy
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          routing_number: routing_number
+          transactions:
+          - null
+          - null
+          ytd_interest: 0
+          pending_transactions:
+          - null
+          - null
+          status: active
+        - recurring_deposits:
+          - null
+          - null
+          account_number: account_number
+          saved_this_month: 6
+          balance: 1
+          created: 2000-01-23T04:56:07.000+00:00
+          apy: apy
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          routing_number: routing_number
+          transactions:
+          - null
+          - null
+          ytd_interest: 0
+          pending_transactions:
+          - null
+          - null
+          status: active
+      properties:
+        accounts:
+          items:
+            $ref: '#/components/schemas/AccountSummaryResponse'
+          type: array
+      type: object
+    ActivityPage:
+      example:
+        next_page_path: next_page_path
+        transactions:
+        - null
+        - null
+      properties:
+        transactions:
+          items:
+            $ref: '#/components/schemas/Transaction'
+          type: array
+        next_page_path:
+          type: string
+      required:
+      - transactions
+      type: object
+    InstrumentWithUITitle:
+      properties:
+        ari:
+          description: Instrument ARI
+          type: string
+        title:
+          description: UI description of the instrument
+          type: string
+      required:
+      - ari
+      - title
+      type: object
+    InstrumentWithLimit:
+      type: object
+      required:
+          - ari
+          - title
+          - limit
+          - limit_minus_ytd_interest
+          - verification_status
+      properties:
+        ari:
+          type: string
+          description: Instrument ARI
+        title:
+          type: string
+          description: UI description of the instrument
+        limit:
+          type: integer
+          description: Amount in cents user is allowed to withdrawal
+        limit_minus_ytd_interest:
+          type: integer
+          description: Amount in cents user is allowed to withdrawal minus ytd_interest
+        verification_status:
+          type: string
+          description: Verification status of this instrument
+        plaid_item_id:
+          type: string
+          description: Plaid Item id associated with this instrument - Optional
+        plaid_account_id:
+          type: string
+          description: Plaid Account id associated with this instrument - Optional
+        account_type:
+          type: string
+          description: Account type associated with this instrument - Optional
+    EligibleInstrumentsResponse:
+      example:
+        instruments:
+        - null
+        - null
+      properties:
+        instruments:
+          items:
+            $ref: '#/components/schemas/InstrumentWithLimit'
+          type: array
+      required:
+      - instruments
+      type: object
+    TransactionBase:
+      properties:
+        id:
+          format: uuid
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        amount:
+          format: int32
+          type: integer
+        external_description:
+          type: string
+        instrument_title:
+          type: string
+        rail_id:
+          type: string
+        dispute:
+          $ref: '#/components/schemas/TransactionDispute'
+        title:
+          type: string
+        cashback:
+          $ref: '#/components/schemas/Cashback'
+      required:
+      - amount
+      - created_at
+      - external_description
+      - id
+      - status
+      - type
+      - title
+      - instrument_title
+      type: object
+    PendingTransaction:
+      allOf:
+      - $ref: '#/components/schemas/TransactionBase'
+      - type: object
+    Transaction:
+      allOf:
+      - $ref: '#/components/schemas/TransactionBase'
+      - properties:
+          posted_at:
+            format: date-time
+            type: string
+        type: object
+    Cashback:
+      example:
+        merchant_name: Best Merchant
+        merchant_logo_url: https://cdn.mos.cms.futurecdn.net/QjuZKXnkLQgsYsL98uhL9X-1200-80.jpg
+        purchase_date: 2021-05-12T17:32:28Z
+        purchase_amount_in_cents: 9900
+      properties:
+        merchant_name:
+          type: string
+        merchant_logo_url:
+          format: uri
+          type: string
+        purchase_date:
+          format: date-time
+          type: string
+        purchase_amount_in_cents:
+          format: int32
+          type: integer
+      required:
+        - merchant_name
+        - purchase_date
+        - purchase_amount_in_cents
+      type: object
+    DepositWithdrawalRequest:
+      example:
+        amount: 0
+        instrument_ari: instrument_ari
+        idempotency_key: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        amount:
+          format: int32
+          type: integer
+        instrument_ari:
+          format: ARI
+          type: string
+        idempotency_key:
+          format: uuid
+          type: string
+      required:
+      - amount
+      - idempotency_key
+      - instrument_ari
+      type: object
+    RecurringDepositRequest:
+      allOf:
+      - properties:
+          instrument_ari:
+            format: ARI
+            type: string
+          amount:
+            format: int32
+            type: integer
+          idempotency_key:
+            format: uuid
+            type: string
+          frequency:
+            enum:
+            - weekly
+            - monthly
+            type: string
+          nth_day:
+            format: int32
+            type: integer
+        required:
+        - amount
+        - frequency
+        - idempotency_key
+        - instrument_ari
+        - nth_day
+        type: object
+    RecurringDeposit:
+      allOf:
+      - properties:
+          id:
+            format: uuid
+            type: string
+          created_at:
+            format: date-time
+            type: string
+          next_occurrence_description:
+            type: string
+          instrument:
+            $ref: '#/components/schemas/InstrumentWithUITitle'
+          amount:
+            format: int32
+            type: integer
+          schedule:
+            $ref: '#/components/schemas/RecurringSchedule'
+        required:
+        - amount
+        - created_at
+        - id
+        - instrument
+        - next_occurrence_description
+        - schedule
+        type: object
+    TransactionDispute:
+      properties:
+        status:
+          enum:
+            - pending_dispute
+            - resolved
+          type: string
+        reason:
+          enum:
+            - error_incorrect_date_or_amount
+            - unauthorized
+          type: string
+        resolution:
+          enum:
+            - in_favor_of_customer
+            - not_in_favor_of_customer
+          type: string
+        initiated_on:
+          format: date-time
+          type: string
+        resolved_on:
+          format: date-time
+          type: string
+      type: object
+    RecurringSchedule:
+      example:
+        frequency: weekly
+        nth_day: 3
+        description: Every week on Wednesday
+      properties:
+        frequency:
+          enum:
+          - weekly
+          - monthly
+          type: string
+        nth_day:
+          format: int32
+          type: integer
+        description:
+          type: string
+      required:
+      - description
+      - frequency
+      - nth_day
+      type: object
+    DocumentsResponse:
+      example:
+        documents:
+        - date: 2000-01-23T04:56:07.000+00:00
+          display_title: display_title
+          url: http://example.com/aeiou
+        - date: 2000-01-23T04:56:07.000+00:00
+          display_title: display_title
+          url: http://example.com/aeiou
+      properties:
+        documents:
+          items:
+            $ref: '#/components/schemas/Document'
+          type: array
+      required:
+      - documents
+      type: object
+    Document:
+      example:
+        date: 2000-01-23T04:56:07.000+00:00
+        display_title: display_title
+        url: http://example.com/aeiou
+      properties:
+        display_title:
+          type: string
+        url:
+          format: url
+          type: string
+        date:
+          format: date-time
+          type: string
+      required:
+      - date
+      - display_title
+      - url
+    APYResponse:
+      example:
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        apy_rate: 2.00
+        fdic_rate: 3.00
+        multiplier: 0.6
+      properties:
+        id:
+          format: uuid
+          type: string
+        apy_rate:
+          type: string
+        fdic_rate:
+          type: string
+        multiplier:
+          type: string
+      required:
+        - id
+        - apy_rate
+      type: object
